@@ -1,0 +1,13 @@
+numpy
+pandas
+tqdm
+lmdb
+opencv - python
+pillow
+tensorboardx
+wandb
+cartopy
+xarray
+einops
+black
+isort
