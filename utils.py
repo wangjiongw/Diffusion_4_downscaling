@@ -1,5 +1,6 @@
 """Defines auxiliary functions for fixing the seeds, setting
 a logger and visualizing WeatherBench data."""
+
 import logging
 import os
 import random
@@ -10,16 +11,17 @@ import matplotlib.pyplot as plt
 import numpy as np
 import torch
 from cartopy.mpl.geoaxes import GeoAxes
-from cartopy.mpl.ticker import LongitudeFormatter, LatitudeFormatter
+from cartopy.mpl.ticker import LatitudeFormatter, LongitudeFormatter
 from cartopy.util import add_cyclic_point
 from matplotlib.figure import Figure
 from mpl_toolkits.axes_grid1 import AxesGrid
 
-
 # Tensorboard visualization titles.
-TITLES = ("Upsampled with interpolation",
-          "Super-resolution reconstruction",
-          "High-resolution original")
+TITLES = (
+    "Upsampled with interpolation",
+    "Super-resolution reconstruction",
+    "High-resolution original",
+)
 
 
 def set_seeds(seed: int = 0):
@@ -62,7 +64,10 @@ def setup_logger(logger_name, root, phase, level=logging.INFO, screen=False):
         screen: If True then write logging records to a stream.
     """
     logger = logging.getLogger(logger_name)
-    formatter = logging.Formatter("%(asctime)s.%(msecs)03d - %(levelname)s: %(message)s", datefmt="%y-%m-%d %H:%M:%S")
+    formatter = logging.Formatter(
+        "%(asctime)s.%(msecs)03d - %(levelname)s: %(message)s",
+        datefmt="%y-%m-%d %H:%M:%S",
+    )
     log_file = os.path.join(root, "{}.log".format(phase))
     fh = logging.FileHandler(log_file, mode="w")
     fh.setFormatter(formatter)
@@ -74,10 +79,20 @@ def setup_logger(logger_name, root, phase, level=logging.INFO, screen=False):
         logger.addHandler(sh)
 
 
-def construct_and_save_wbd_plot(latitude: np.array, longitude: np.array, single_variable: torch.tensor,
-                                path: str, title: str = None, label: str = None, dpi: int = 200,
-                                figsize: tuple = (11, 8.5), cmap: str = "coolwarm", vmin=None,
-                                vmax=None, costline_color="black"):
+def construct_and_save_wbd_plot(
+    latitude: np.array,
+    longitude: np.array,
+    single_variable: torch.tensor,
+    path: str,
+    title: str = None,
+    label: str = None,
+    dpi: int = 200,
+    figsize: tuple = (11, 8.5),
+    cmap: str = "coolwarm",
+    vmin=None,
+    vmax=None,
+    costline_color="black",
+):
     """Creates and saves WeatherBench data visualization for a single variable.
     Args:
         latitude: An array of latitudes.
@@ -96,26 +111,52 @@ def construct_and_save_wbd_plot(latitude: np.array, longitude: np.array, single_
     # single_variable, longitude = add_cyclic_point(single_variable, coord=np.array(longitude))
     plt.figure(dpi=dpi, figsize=figsize)
     projection = ccrs.PlateCarree()
-    ax = plt.axes()#projection=projection)
+    ax = plt.axes()  # projection=projection)
 
     if cmap == "binary":
         # For mask visualization.
-        p = plt.contourf(longitude, latitude, single_variable, 10, transform=projection,
-                         cmap=(matplotlib.colors.ListedColormap(["white", "gray", "black"])
-                               .with_extremes(over="0.25", under="0.75")),
-                         vmin=-2, vmax=2)
+        p = plt.contourf(
+            longitude,
+            latitude,
+            single_variable,
+            10,
+            transform=projection,
+            cmap=(
+                matplotlib.colors.ListedColormap(
+                    ["white", "gray", "black"]
+                ).with_extremes(over="0.25", under="0.75")
+            ),
+            vmin=-2,
+            vmax=2,
+        )
         boundaries, ticks = [-1, -0.33, 0.33, 1], [-1, 0, 1]
     elif cmap == "coolwarm":
         # For temperature visualization.
-        p = plt.contourf(longitude, latitude, single_variable, 60, transform=projection, cmap=cmap,
-                         levels=np.linspace(vmin, vmax, max(int(np.abs(vmax-vmin))//2, 3)))
+        p = plt.contourf(
+            longitude,
+            latitude,
+            single_variable,
+            60,
+            transform=projection,
+            cmap=cmap,
+            levels=np.linspace(vmin, vmax, max(int(np.abs(vmax - vmin)) // 2, 3)),
+        )
         boundaries, ticks = None, np.round(np.linspace(vmin, vmax, 7), 2)
 
     elif cmap == "Greens":
         # For visualization of standard deviation.
-        p = plt.contourf(longitude, latitude, single_variable, 60, transform=projection, cmap=cmap,
-                         extend="max")
-        boundaries, ticks = None, np.linspace(single_variable.min(), single_variable.max(), 5)
+        p = plt.contourf(
+            longitude,
+            latitude,
+            single_variable,
+            60,
+            transform=projection,
+            cmap=cmap,
+            extend="max",
+        )
+        boundaries, ticks = None, np.linspace(
+            single_variable.min(), single_variable.max(), 5
+        )
 
     # ax.set_xticks(np.linspace(-180, 180, 5), crs=projection)
     # ax.set_yticks(np.linspace(-90, 90, 5), crs=projection)
@@ -149,10 +190,20 @@ def add_batch_index(path: str, index: int):
     return f"{filename}_{index}.{extension}"
 
 
-def construct_and_save_wbd_plots(latitude: np.array, longitude: np.array, data: torch.tensor,
-                                 path: str, title: str = None, label: str = None,
-                                 dpi: int = 200, figsize: tuple = (11, 8.5), cmap: str = "coolwarm",
-                                 vmin=None, vmax=None, costline_color="black"):
+def construct_and_save_wbd_plots(
+    latitude: np.array,
+    longitude: np.array,
+    data: torch.tensor,
+    path: str,
+    title: str = None,
+    label: str = None,
+    dpi: int = 200,
+    figsize: tuple = (11, 8.5),
+    cmap: str = "coolwarm",
+    vmin=None,
+    vmax=None,
+    costline_color="black",
+):
     """Creates and saves WeatherBench data visualization.
     Args:
         latitude: An array of latitudes.
@@ -174,15 +225,46 @@ def construct_and_save_wbd_plots(latitude: np.array, longitude: np.array, data: 
     if len(data.shape) > 2:
         for batch_index in range(data.shape[0]):
             path_for_sample = add_batch_index(path, batch_index)
-            construct_and_save_wbd_plot(latitude, longitude, data[batch_index], path_for_sample,
-                                        title, label, dpi, figsize, cmap, vmin, vmax, costline_color)
+            construct_and_save_wbd_plot(
+                latitude,
+                longitude,
+                data[batch_index],
+                path_for_sample,
+                title,
+                label,
+                dpi,
+                figsize,
+                cmap,
+                vmin,
+                vmax,
+                costline_color,
+            )
     else:
-        construct_and_save_wbd_plot(latitude, longitude, data, path, title, label, dpi, figsize, cmap,
-                                    vmin, vmax, costline_color)
+        construct_and_save_wbd_plot(
+            latitude,
+            longitude,
+            data,
+            path,
+            title,
+            label,
+            dpi,
+            figsize,
+            cmap,
+            vmin,
+            vmax,
+            costline_color,
+        )
 
 
-def construct_tb_visualization(latitude: np.array, longitude: np.array, data: tuple, label=None,
-                               dpi: int = 300, figsize: tuple = (22, 6), cmap: str = "coolwarm") -> Figure:
+def construct_tb_visualization(
+    latitude: np.array,
+    longitude: np.array,
+    data: tuple,
+    label=None,
+    dpi: int = 300,
+    figsize: tuple = (22, 6),
+    cmap: str = "coolwarm",
+) -> Figure:
     """Construct tensorboard visualization figure.
     Args:
         latitude: An array of latitudes.
@@ -200,18 +282,40 @@ def construct_tb_visualization(latitude: np.array, longitude: np.array, data: tu
     projection = ccrs.PlateCarree()
     axes_class = (GeoAxes, dict(map_projection=projection))
     fig = plt.figure(figsize=figsize, dpi=dpi)
-    axgr = AxesGrid(fig, 111, axes_class=axes_class, nrows_ncols=(1, 3), axes_pad=0.95, cbar_location="bottom",
-                    cbar_mode="single", cbar_pad=0.01, cbar_size="2%", label_mode='')
+    axgr = AxesGrid(
+        fig,
+        111,
+        axes_class=axes_class,
+        nrows_ncols=(1, 3),
+        axes_pad=0.95,
+        cbar_location="bottom",
+        cbar_mode="single",
+        cbar_pad=0.01,
+        cbar_size="2%",
+        label_mode="",
+    )
     lon_formatter = LongitudeFormatter(zero_direction_label=True)
     lat_formatter = LatitudeFormatter()
 
     for i, ax in enumerate(axgr):
         single_variable, lon = add_cyclic_point(data[i], coord=np.array(longitude))
         ax.set_title(TITLES[i])
-        ax.gridlines(draw_labels=True, xformatter=lon_formatter, yformatter=lat_formatter,
-                     xlocs=np.linspace(-180, 180, 5), ylocs=np.linspace(-90, 90, 5))
-        p = ax.contourf(lon, latitude, single_variable, transform=projection, cmap=cmap,
-                        vmin=min_value, vmax=max_value)
+        ax.gridlines(
+            draw_labels=True,
+            xformatter=lon_formatter,
+            yformatter=lat_formatter,
+            xlocs=np.linspace(-180, 180, 5),
+            ylocs=np.linspace(-90, 90, 5),
+        )
+        p = ax.contourf(
+            lon,
+            latitude,
+            single_variable,
+            transform=projection,
+            cmap=cmap,
+            vmin=min_value,
+            vmax=max_value,
+        )
         ax.coastlines()
 
     axgr.cbar_axes[0].colorbar(p, pad=0.01, label=label, shrink=0.95)
@@ -247,7 +351,7 @@ def accumulate_statistics(new_info: dict, storage: dict):
 #     return Transformation
 
 
-def get_optimizer(name: str) :
+def get_optimizer(name: str):
     """Return optimization algorithm class corresponding to name.
     Args:
         name: The name of optimizer.
@@ -275,17 +379,19 @@ def construct_mask(x: torch.tensor) -> torch.tensor:
     values[neg_mask] = -1
     values[zero_mask] = 0
     return values
+
+
 def normal(y_pred):
-    y_pred_max=torch.max(y_pred,-1,keepdim=True).values.max(-2,keepdim=True).values
-    y_pred_min=torch.min(y_pred,-1,keepdim=True).values.min(-2,keepdim=True).values
-    return (y_pred-y_pred_min)/(y_pred_max-y_pred_min+1e-16)
+    y_pred_max = torch.max(y_pred, -1, keepdim=True).values.max(-2, keepdim=True).values
+    y_pred_min = torch.min(y_pred, -1, keepdim=True).values.min(-2, keepdim=True).values
+    return (y_pred - y_pred_min) / (y_pred_max - y_pred_min + 1e-16)
 
-def psnr(y_pred,y_true):
-    y_pred=normal(y_pred)
-    y_true=normal(y_true)
-    loss=10. * torch.log10(255. / torch.mean((y_pred - y_true) ** 2))
+
+def psnr(y_pred, y_true):
+    y_pred = normal(y_pred)
+    y_true = normal(y_true)
+    loss = 10.0 * torch.log10(255.0 / torch.mean((y_pred - y_true) ** 2))
     return loss
-
 
 
 # def my_plot(self,data_list):
@@ -302,7 +408,6 @@ def psnr(y_pred,y_true):
 #             plt.savefig(self.configs_train.draw_path[channel]+"/epoch{}.png".format(epoch))
 #             plt.close()
 #     return fig
-
 
 
 # def reverse_transform_candidates(candidates: torch.tensor, reverse_transform: Transform,

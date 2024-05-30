@@ -6,6 +6,7 @@ creates a returns a network to train on  single image
 super-resolution task.
 The work is based on https://github.com/Janspiry/Image-Super-Resolution-via-Iterative-Refinement.
 """
+
 import functools
 import logging
 
@@ -80,7 +81,9 @@ def weights_init_orthogonal(model: nn.Module) -> None:
         init.constant_(model.bias.data, 0.0)
 
 
-def init_weights(net: nn.Module, init_type: str = "kaiming", scale: float = 1, std: float = 0.02) -> None:
+def init_weights(
+    net: nn.Module, init_type: str = "kaiming", scale: float = 1, std: float = 0.02
+) -> None:
     """Initializes network weights.
     Args:
         net: The neural network.
@@ -93,18 +96,32 @@ def init_weights(net: nn.Module, init_type: str = "kaiming", scale: float = 1, s
         weights_init_normal_ = functools.partial(weights_init_normal, std=std)
         net.apply(weights_init_normal_)
     elif init_type == "kaiming":
-        weights_init_kaiming_ = functools.partial(
-            weights_init_kaiming, scale=scale)
+        weights_init_kaiming_ = functools.partial(weights_init_kaiming, scale=scale)
         net.apply(weights_init_kaiming_)
     elif init_type == "orthogonal":
         net.apply(weights_init_orthogonal)
     else:
-        raise NotImplementedError("Initialization method [{:s}] not implemented".format(init_type))
+        raise NotImplementedError(
+            "Initialization method [{:s}] not implemented".format(init_type)
+        )
 
 
-def define_network(in_channel, out_channel, norm_groups, inner_channel,
-                   channel_multiplier, attn_res, res_blocks, dropout,
-                   diffusion_loss, conditional, gpu_ids, distributed, init_method, height) -> nn.Module:
+def define_network(
+    in_channel,
+    out_channel,
+    norm_groups,
+    inner_channel,
+    channel_multiplier,
+    attn_res,
+    res_blocks,
+    dropout,
+    diffusion_loss,
+    conditional,
+    gpu_ids,
+    distributed,
+    init_method,
+    height,
+) -> nn.Module:
     """Defines Gaussian Diffusion model for single image super-resolution task.
     Args:
         in_channel: The number of channels of input tensor of U-Net.
@@ -125,18 +142,22 @@ def define_network(in_channel, out_channel, norm_groups, inner_channel,
         A Gaussian Diffusion model.
     """
 
-    network = UNet(in_channel=in_channel,
-                   out_channel=out_channel,
-                   norm_groups=norm_groups if norm_groups else 32,
-                   inner_channel=inner_channel,
-                   channel_mults=channel_multiplier,
-                   attn_res=attn_res,
-                   res_blocks=res_blocks,
-                   dropout=dropout,
-                   height=height)
+    network = UNet(
+        in_channel=in_channel,
+        out_channel=out_channel,
+        norm_groups=norm_groups if norm_groups else 32,
+        inner_channel=inner_channel,
+        channel_mults=channel_multiplier,
+        attn_res=attn_res,
+        res_blocks=res_blocks,
+        dropout=dropout,
+        height=height,
+    )
 
-    model = DDPM(network, loss_type=diffusion_loss, conditional=conditional,gpu_ids=gpu_ids)
-    init_weights(model, init_type=init_method)#ddpm是框架，unet是内部模块嵌套关系
+    model = DDPM(
+        network, loss_type=diffusion_loss, conditional=conditional, gpu_ids=gpu_ids
+    )
+    init_weights(model, init_type=init_method)  # ddpm是框架，unet是内部模块嵌套关系
 
     if gpu_ids and distributed:
         assert torch.cuda.is_available()

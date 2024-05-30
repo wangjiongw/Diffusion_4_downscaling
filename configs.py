@@ -1,5 +1,6 @@
 """Defines configuration parameters for the whole model and dataset.
 """
+
 import argparse
 import json
 import os
@@ -110,10 +111,16 @@ class Config:
         self.results = self.params["path"]["results"]
         self.checkpoint = self.params["path"]["checkpoint"]
         self.resume_state = self.params["path"]["resume_state"]
+        
         self.batch_size = self.params["data"]["batch_size"]
         self.num_workers = self.params["data"]["num_workers"]
         self.use_shuffle = self.params["data"]["use_shuffle"]
         self.height = self.params["data"]["height"]
+        self.start_date = self.params["data"]["start_date"]
+        self.end_date = self.params["data"]["end_date"]
+        self.sample_interval = self.params["data"]["sample_interval"]
+        self.data_scale = self.params["data"]["scale"]
+        
         self.finetune_norm = self.params["model"]["finetune_norm"]
         self.in_channel = self.params["model"]["unet"]["in_channel"]
         self.out_channel = self.params["model"]["unet"]["out_channel"]
@@ -125,17 +132,31 @@ class Config:
         self.dropout = self.params["model"]["unet"]["dropout"]
         self.init_method = self.params["model"]["unet"]["init_method"]
         self.train_schedule = self.params["model"]["beta_schedule"]["train"]["schedule"]
-        self.train_n_timestep = self.params["model"]["beta_schedule"]["train"]["n_timestep"]
-        self.train_linear_start = self.params["model"]["beta_schedule"]["train"]["linear_start"]
-        self.train_linear_end = self.params["model"]["beta_schedule"]["train"]["linear_end"]
+        self.train_n_timestep = self.params["model"]["beta_schedule"]["train"][
+            "n_timestep"
+        ]
+        self.train_linear_start = self.params["model"]["beta_schedule"]["train"][
+            "linear_start"
+        ]
+        self.train_linear_end = self.params["model"]["beta_schedule"]["train"][
+            "linear_end"
+        ]
         self.val_schedule = self.params["model"]["beta_schedule"]["val"]["schedule"]
         self.val_n_timestep = self.params["model"]["beta_schedule"]["val"]["n_timestep"]
-        self.val_linear_start = self.params["model"]["beta_schedule"]["val"]["linear_start"]
+        self.val_linear_start = self.params["model"]["beta_schedule"]["val"][
+            "linear_start"
+        ]
         self.val_linear_end = self.params["model"]["beta_schedule"]["val"]["linear_end"]
         self.test_schedule = self.params["model"]["beta_schedule"]["test"]["schedule"]
-        self.test_n_timestep = self.params["model"]["beta_schedule"]["test"]["n_timestep"]
-        self.test_linear_start = self.params["model"]["beta_schedule"]["test"]["linear_start"]
-        self.test_linear_end = self.params["model"]["beta_schedule"]["test"]["linear_end"]
+        self.test_n_timestep = self.params["model"]["beta_schedule"]["test"][
+            "n_timestep"
+        ]
+        self.test_linear_start = self.params["model"]["beta_schedule"]["test"][
+            "linear_start"
+        ]
+        self.test_linear_end = self.params["model"]["beta_schedule"]["test"][
+            "linear_end"
+        ]
         self.conditional = self.params["model"]["diffusion"]["conditional"]
         self.diffusion_loss = self.params["model"]["diffusion"]["loss"]
         self.n_iter = self.params["training"]["epoch_n_iter"]
@@ -159,9 +180,13 @@ class Config:
         self.params = json.loads(json_str, object_pairs_hook=OrderedDict)
 
         if not self.params["path"]["resume_state"]:
-            self.experiments_root = os.path.join("experiments", f"{self.params['name']}_{get_current_datetime()}")
+            self.experiments_root = os.path.join(
+                "experiments", f"{self.params['name']}_{get_current_datetime()}"
+            )
         else:
-            self.experiments_root = "/".join(self.params["path"]["resume_state"].split("/")[:-2])
+            self.experiments_root = "/".join(
+                self.params["path"]["resume_state"].split("/")[:-2]
+            )
 
         for key, path in self.params["path"].items():
             if not key.startswith("resume"):
@@ -187,15 +212,21 @@ class Config:
         return None
 
     def get_hyperparameters_as_dict(self):
-        """Returns dictionary containg parsed configuration json file.
-        """
+        """Returns dictionary containg parsed configuration json file."""
         return self.params
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("-c", "--config", type=str, help="JSON file for configuration")
-    parser.add_argument("-p", "--phase", type=str, choices=["train", "val"],
-                        help="Run either training or validation(inference).", default="train")
+    parser.add_argument(
+        "-p",
+        "--phase",
+        type=str,
+        choices=["train", "val"],
+        help="Run either training or validation(inference).",
+        default="train",
+    )
     parser.add_argument("-gpu", "--gpu_ids", type=str, default=None)
     args = parser.parse_args()
     configs = Config(args)

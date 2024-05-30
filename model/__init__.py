@@ -2,6 +2,7 @@
 Single Image Super-Resolution task with DDPM.
 The work is based on https://github.com/Janspiry/Image-Super-Resolution-via-Iterative-Refinement.
 """
+
 import logging
 
 from .model import DDPM
@@ -9,13 +10,38 @@ from .model import DDPM
 logger = logging.getLogger(name="base")
 
 
-def create_model(in_channel, out_channel, norm_groups, inner_channel,
-                 channel_multiplier, attn_res, res_blocks, dropout,
-                 diffusion_loss, conditional, gpu_ids, distributed, init_method,
-                 train_schedule, train_n_timestep, train_linear_start, train_linear_end,
-                 val_schedule, val_n_timestep, val_linear_start, val_linear_end,
-                 finetune_norm, optimizer, amsgrad, learning_rate, checkpoint, resume_state,
-                 phase, height):
+def create_model(
+    in_channel,
+    out_channel,
+    norm_groups,
+    inner_channel,
+    channel_multiplier,
+    attn_res,
+    res_blocks,
+    dropout,
+    diffusion_loss,
+    conditional,
+    gpu_ids,
+    distributed,
+    init_method,
+    train_schedule,
+    train_n_timestep,
+    train_linear_start,
+    train_linear_end,
+    val_schedule,
+    val_n_timestep,
+    val_linear_start,
+    val_linear_end,
+    finetune_norm,
+    optimizer,
+    amsgrad,
+    learning_rate,
+    checkpoint,
+    resume_state,
+    phase,
+    height,
+    accelerator=None
+):
     """Creates DDPM model.
     Args:
         in_channel: The number of channels of input tensor of U-Net.
@@ -50,17 +76,37 @@ def create_model(in_channel, out_channel, norm_groups, inner_channel,
     Returns:
         Returns DDPM model.
     """
-    diffusion_model = DDPM(in_channel=in_channel, out_channel=out_channel, norm_groups=norm_groups,
-                           inner_channel=inner_channel, channel_multiplier=channel_multiplier,
-                           attn_res=attn_res, res_blocks=res_blocks, dropout=dropout,
-                           diffusion_loss=diffusion_loss, conditional=conditional,
-                           gpu_ids=gpu_ids, distributed=distributed, init_method=init_method,
-                           train_schedule=train_schedule, train_n_timestep=train_n_timestep,
-                           train_linear_start=train_linear_start, train_linear_end=train_linear_end,
-                           val_schedule=val_schedule, val_n_timestep=val_n_timestep,
-                           val_linear_start=val_linear_start, val_linear_end=val_linear_end,
-                           finetune_norm=finetune_norm, optimizer=optimizer, amsgrad=amsgrad,
-                           learning_rate=learning_rate, checkpoint=checkpoint,
-                           resume_state=resume_state, phase=phase, height=height)
+    diffusion_model = DDPM(
+        in_channel=in_channel,
+        out_channel=out_channel,
+        norm_groups=norm_groups,
+        inner_channel=inner_channel,
+        channel_multiplier=channel_multiplier,
+        attn_res=attn_res,
+        res_blocks=res_blocks,
+        dropout=dropout,
+        diffusion_loss=diffusion_loss,
+        conditional=conditional,
+        gpu_ids=gpu_ids,
+        distributed=distributed,
+        init_method=init_method,
+        train_schedule=train_schedule,
+        train_n_timestep=train_n_timestep,
+        train_linear_start=train_linear_start,
+        train_linear_end=train_linear_end,
+        val_schedule=val_schedule,
+        val_n_timestep=val_n_timestep,
+        val_linear_start=val_linear_start,
+        val_linear_end=val_linear_end,
+        finetune_norm=finetune_norm,
+        optimizer=optimizer,
+        amsgrad=amsgrad,
+        learning_rate=learning_rate,
+        checkpoint=checkpoint,
+        resume_state=resume_state,
+        phase=phase,
+        height=height,
+        accelerator=accelerator
+    )
     logger.info("Model [{:s}] is created.".format(diffusion_model.__class__.__name__))
     return diffusion_model
