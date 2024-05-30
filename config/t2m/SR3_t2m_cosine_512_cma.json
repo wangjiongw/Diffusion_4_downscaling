@@ -1,29 +1,33 @@
 {
-    "name": "SR3_t2m_cosine_end1e-3_drop_0.1",
+    "name": "SR3_t2m_cosine_end1e-3_drop_0.1_9years_ps512_bs16",
     "phase": "train",
-    "gpu_ids": [2],
+    "gpu_ids": [0, 1],
     "path": {
         "log": "logs",
         "tb_logger": "tb_logger",
         "results": "results",
         "checkpoint": "checkpoint",
-        "resume_state":"/home/data/downscaling/downscaling_1023/DDIM/SR3_new/experiments/SR3_t2m_cosine_end1e-3_drop_0.1_230515_170651/checkpoint/I170000_E282"
+        "resume_state": ""
     },
     "data": {
-        "batch_size": 128,
-        "num_workers": 6,
+        "batch_size": 16,
+        "num_workers": 16,
         "use_shuffle": true,
-	"height": 128
+	    "height": 512,
+        "start_date": "2012-01-01",
+        "end_date": "2020-12-31-23",
+        "sample_interval": "6H",
+        "scale": 3
     },
     "model": {
         "finetune_norm": false,
         "unet": {
-            "in_channel": 4,  // [noisy,lr,land,mask].
+            "in_channel": 4,  //  [noisy, lr, land, mask].
             "out_channel": 1, // [HR].
             "inner_channel": 64, // channel
             "norm_groups": 32,  // normgroup
             "channel_multiplier": [1, 1, 2, 4], //64 32,16
-            "attn_res": [32,16],  // 在同样的维度下加attention.
+            "attn_res": [32, 16],  // 在同样的维度下加attention.
             "res_blocks": 1,
             "dropout": 0.1,
             "init_method": "kaiming"
@@ -55,14 +59,14 @@
     },
     "training": {
         "epoch_n_iter": 1000000,
-        "val_freq": 10000,//25000
+        "val_freq": 10000,              //25000
         "save_checkpoint_freq": 10000,
-        "print_freq": 2500,
+        "print_freq": 1000,
         "n_val_vis": 1,
-        "val_vis_freq": 170,//30,
-        "sample_size":5,
+        "val_vis_freq": 50,            //30,
+        "sample_size": 5,
         "optimizer": {
-            "type": "adamw",  // Possible types are ['adam', 'adamw']
+            "type": "adamw",            // Possible types are ['adam', 'adamw']
             "amsgrad": false,
             "lr": 1e-4
         }
