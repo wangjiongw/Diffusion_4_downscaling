@@ -1,0 +1,7 @@
+*.png
+experiments/
+./debug/
+*pyc
+slurm_logs/
+task_logs/
+
