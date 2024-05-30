@@ -30,7 +30,7 @@ def time2ec_path(timestamp, var_name):
     ec_path = os.path.join(
         "single",
         str(timestamp)[:4],
-        str(timestamp).replace(" ", "/") + "-" + f"{var_name}.npy"
+        str(timestamp).replace(" ", "/") + "-" + f"{var_name}.npy",
     )
     return ec_path
 
@@ -68,7 +68,7 @@ class SR3_CNDataset_patch(torch.utils.data.Dataset):
             hr_height, hr_width = 6001, 7001
 
         self.land_01 = interpolate(
-            torch.from_numpy(self.land_01).float().unsqueeze(0),        # 1, 1, H, W
+            torch.from_numpy(self.land_01).float().unsqueeze(0),  # 1, 1, H, W
             size=(hr_height, hr_width),
             mode="bilinear",
         ).squeeze(0)
@@ -76,9 +76,15 @@ class SR3_CNDataset_patch(torch.utils.data.Dataset):
             torch.from_numpy(self.mask_data).float().unsqueeze(0),
             size=(hr_height, hr_width),
             mode="bilinear",
-        ).squeeze(0)            # 1, H, W; torch.tensor
-        self.land_01 = (self.land_01 - np.min(self.land_01)) / (np.max(self.land_01) - np.min(self.land_01))
-        self.mask_data = (self.mask_data - np.min(self.mask_data)) / (np.max(self.mask_data) - np.min(self.mask_data))
+        ).squeeze(
+            0
+        )  # 1, H, W; torch.tensor
+        self.land_01 = (self.land_01 - np.min(self.land_01)) / (
+            np.max(self.land_01) - np.min(self.land_01)
+        )
+        self.mask_data = (self.mask_data - np.min(self.mask_data)) / (
+            np.max(self.mask_data) - np.min(self.mask_data)
+        )
 
         # build file paths
         self.timestamps = pd.date_range(start=year_start, end=year_end, freq=year_freq)
@@ -123,7 +129,7 @@ class SR3_CNDataset_patch(torch.utils.data.Dataset):
             mean=np.array(mean_list, dtype=np.float32),  # C(1)
             std=np.array(std_list, dtype=np.float32),  # C(1)
         )
-        
+
     def get_stats_ec(self):
         """load mean & std of data of ERA5 variables in self.vnames; PRESSURE-SINGLE
 
@@ -204,25 +210,21 @@ class SR3_CNDataset_patch(torch.utils.data.Dataset):
             cma_data[cma_data > 1000.0] = 0.0 if return_gt else 0.0
             cma_data = np.clip(cma_data, a_min=-1000.0, a_max=1000.0)
         elif self.variable_name == "pre":
-            cma_data[cma_data < 0] = (
-                0.0 if return_gt else 0.0
-            )  # pre must larger than 0
+            cma_data[cma_data < 0] = 0.0 if return_gt else 0.0  # pre must larger than 0
             cma_data = np.clip(cma_data, a_min=0.0, a_max=300.0)
         elif self.variable_name == "pre6h":
-            cma_data[cma_data < 0] = (
-                0.0 if return_gt else 0.0
-            )  # pre must larger than 0
+            cma_data[cma_data < 0] = 0.0 if return_gt else 0.0  # pre must larger than 0
             cma_data = np.clip(cma_data, a_min=0.0, a_max=1500.0)
 
         return cma_data
 
     def get_patch(self, hr, mask, hr_land, lr_inter):
-        
+
         ih_hr, iw_hr = hr.shape[1:]
         ip = self.patch_size
         ix = random.randrange(0, iw_hr - ip + 1)
         iy = random.randrange(0, ih_hr - ip + 1)
-        
+
         # print(ip, ix, iy, hr.shape, mask.shape, hr_land.shape, lr_inter.shape, flush=True)
         mask_data = (mask[:, iy : iy + ip, ix : ix + ip]).float()
         land_data = (hr_land[:, iy : iy + ip, ix : ix + ip]).float()
@@ -267,7 +269,7 @@ class SR3_CNDataset_patch(torch.utils.data.Dataset):
         )  # 1, H, W; torch
         hr_target = self.clean_cma_data(hr_target)
         hr_target = np.ascontiguousarray(hr_target)
-        
+
         if "tp" in self.variable_name:
             lr_inter = interpolate(
                 torch.from_numpy(
@@ -327,14 +329,14 @@ class SR3_CNDataset_patch_preload(torch.utils.data.Dataset):
         self.mask_data = np.expand_dims(
             np.load(mask_paths, mmap_mode="r+")[:: self.scale, :: self.scale], axis=0
         )  # 1, H(6000/2000), W(7000/2334)
-        
+
         if scale == 3:
             hr_height, hr_width = 2000, 2334
         elif scale == 1:
             hr_height, hr_width = 6001, 7001
 
         self.land_01 = interpolate(
-            torch.from_numpy(self.land_01).float().unsqueeze(0),        # 1, 1, H, W
+            torch.from_numpy(self.land_01).float().unsqueeze(0),  # 1, 1, H, W
             size=(hr_height, hr_width),
             mode="bilinear",
         ).squeeze(0)
@@ -342,11 +344,17 @@ class SR3_CNDataset_patch_preload(torch.utils.data.Dataset):
             torch.from_numpy(self.mask_data).float().unsqueeze(0),
             size=(hr_height, hr_width),
             mode="nearest",
-        ).squeeze(0)            # 1, H, W; torch.tensor
-        self.land_01 = (self.land_01 - torch.min(self.land_01)) / (torch.max(self.land_01) - torch.min(self.land_01))
-        self.mask_data = (self.mask_data - torch.min(self.mask_data)) / (torch.max(self.mask_data) - torch.min(self.mask_data))              # 0==land; 1==sea
-        self.mask_data = 1 - self.mask_data,          # 1==land; 0==sea
-        
+        ).squeeze(
+            0
+        )  # 1, H, W; torch.tensor
+        self.land_01 = (self.land_01 - torch.min(self.land_01)) / (
+            torch.max(self.land_01) - torch.min(self.land_01)
+        )
+        self.mask_data = (self.mask_data - torch.min(self.mask_data)) / (
+            torch.max(self.mask_data) - torch.min(self.mask_data)
+        )  # 0==land; 1==sea
+        self.mask_data = (1 - self.mask_data,)  # 1==land; 0==sea
+
         # build file paths
         self.timestamps = pd.date_range(start=year_start, end=year_end, freq=year_freq)
         self.lr_items, self.hr_items = list(), list()
@@ -362,7 +370,7 @@ class SR3_CNDataset_patch_preload(torch.utils.data.Dataset):
                 continue
             self.lr_items.append(np.load(lr_path, mmap_mode="r+"))
             self.hr_items.append(np.load(hr_path, mmap_mode="r+"))
-            
+
         assert len(self.lr_items) == len(self.hr_items)
         print(
             f"File counts: {len(self.lr_items)} LR files & {len(self.hr_items)} HR files found!"
@@ -391,7 +399,7 @@ class SR3_CNDataset_patch_preload(torch.utils.data.Dataset):
             mean=np.array(mean_list, dtype=np.float32),  # C(1)
             std=np.array(std_list, dtype=np.float32),  # C(1)
         )
-        
+
     def get_stats_ec(self):
         """load mean & std of data of ERA5 variables in self.vnames; PRESSURE-SINGLE
 
@@ -470,25 +478,21 @@ class SR3_CNDataset_patch_preload(torch.utils.data.Dataset):
             cma_data[cma_data > 1000.0] = 0.0 if return_gt else 0.0
             cma_data = np.clip(cma_data, a_min=-1000.0, a_max=1000.0)
         elif self.variable_name == "pre":
-            cma_data[cma_data < 0] = (
-                0.0 if return_gt else 0.0
-            )  # pre must larger than 0
+            cma_data[cma_data < 0] = 0.0 if return_gt else 0.0  # pre must larger than 0
             cma_data = np.clip(cma_data, a_min=0.0, a_max=300.0)
         elif self.variable_name == "pre6h":
-            cma_data[cma_data < 0] = (
-                0.0 if return_gt else 0.0
-            )  # pre must larger than 0
+            cma_data[cma_data < 0] = 0.0 if return_gt else 0.0  # pre must larger than 0
             cma_data = np.clip(cma_data, a_min=0.0, a_max=1500.0)
 
         return cma_data
 
     def get_patch(self, hr, mask, hr_land, lr_inter):
-        
+
         ih_hr, iw_hr = hr.shape[1:]
         ip = self.patch_size
         ix = random.randrange(0, iw_hr - ip + 1)
         iy = random.randrange(0, ih_hr - ip + 1)
-        
+
         mask_data = (mask[:, iy : iy + ip, ix : ix + ip]).float()
         land_data = (hr_land[:, iy : iy + ip, ix : ix + ip]).float()
 
@@ -530,12 +534,12 @@ class SR3_CNDataset_patch_preload(torch.utils.data.Dataset):
         )  # 1, H, W; torch
         hr_target = self.clean_cma_data(hr_target)
         hr_target = np.ascontiguousarray(hr_target)
-        
+
         if "tp" in self.variable_name:
             lr_inter = interpolate(
                 torch.from_numpy(
                     np.expand_dims(
-                        self.lr_items[index][120: 361, 280: 561],
+                        self.lr_items[index][120:361, 280:561],
                         axis=0,
                     )
                 )
@@ -550,7 +554,7 @@ class SR3_CNDataset_patch_preload(torch.utils.data.Dataset):
             lr_inter = interpolate(
                 torch.from_numpy(
                     np.expand_dims(
-                        self.lr_items[index][120: 361, 280: 561],
+                        self.lr_items[index][120:361, 280:561],
                         axis=0,
                     )
                 )
@@ -606,9 +610,13 @@ class SR3_CNDataset_finetune_patch(torch.utils.data.Dataset):
 
         # [0,2,4,6,8]# 500 zrtuv #[6,8,4,0,2]u v t z r
         self.land_01 = np.expand_dims(np.load(land_paths, mmap_mode="r+"), axis=0)
-        self.land_01 = (self.land_01 - np.min(self.land_01)) / (np.max(self.land_01) - np.min(self.land_01))
+        self.land_01 = (self.land_01 - np.min(self.land_01)) / (
+            np.max(self.land_01) - np.min(self.land_01)
+        )
         self.mask_data = np.expand_dims(np.load(mask_paths, mmap_mode="r+"), axis=0)
-        self.mask_data = (self.mask_data - np.min(self.mask_data)) / (np.max(self.mask_data) - np.min(self.mask_data))
+        self.mask_data = (self.mask_data - np.min(self.mask_data)) / (
+            np.max(self.mask_data) - np.min(self.mask_data)
+        )
         self.start_indices = [0] * len(self.target_hr)
         self.data_count = 0
         # self.scale=scale
@@ -1085,37 +1093,62 @@ class BigDataset_cascade_infer(torch.utils.data.Dataset):
 
 if __name__ == "__main__":
     import cv2
+
     dataset = SR3_CNDataset_patch_preload(
         lr_root="/mnt/hwfile/ai4earth/wangjiong/weather_data/era5_np_float32",
         hr_root="/mnt/hwfile/ai4earth/wangjiong/weather_data/cma_land",
         land_paths="/mnt/petrelfs/wangjiong/ai4earth/ClimateHR/assets/earth_data/ETOPO_2022_v1_1km_N60_0E70_140_surface.npy",
-        mask_paths = "/mnt/petrelfs/wangjiong/ai4earth/ClimateHR/assets/earth_data/land_sea_mask_1km_binary.npy",
+        mask_paths="/mnt/petrelfs/wangjiong/ai4earth/ClimateHR/assets/earth_data/land_sea_mask_1km_binary.npy",
         var="t2m",
         patch_size=1024,
         year_start="2012-01-01",
         year_end="2012-01-02-23",
         year_freq="6H",
-        scale=3
+        scale=3,
     )
-    
+
     dataloader = DataLoader(dataset, batch_size=1, shuffle=True, num_workers=0)
     print(len(dataloader))
-    
+
     for i, data in enumerate(dataloader):
         print(">>>", i)
         print(data["HR"].shape, torch.min(data["HR"]), torch.max(data["HR"]))
-        print(data["INTERPOLATED"].shape, torch.min(data["INTERPOLATED"][0, 0]), torch.max(data["INTERPOLATED"][0, 0]))
+        print(
+            data["INTERPOLATED"].shape,
+            torch.min(data["INTERPOLATED"][0, 0]),
+            torch.max(data["INTERPOLATED"][0, 0]),
+        )
         print(data["mask"].shape, torch.min(data["mask"]), torch.max(data["mask"]))
         print(data["LAND"].shape, torch.min(data["LAND"]), torch.max(data["LAND"]))
-        
+
         # import pdb
         # pdb.set_trace()
-        
+
         hr_array = data["HR"].squeeze().numpy()
-        cv2.imwrite(f"/mnt/petrelfs/wangjiong/ai4earth/Diffusion_4_downscaling/debug/{i}_hr.png", (hr_array - np.min(hr_array)) / (np.max(hr_array) - np.min(hr_array)) * 255.0)
+        cv2.imwrite(
+            f"/mnt/petrelfs/wangjiong/ai4earth/Diffusion_4_downscaling/debug/{i}_hr.png",
+            (hr_array - np.min(hr_array))
+            / (np.max(hr_array) - np.min(hr_array))
+            * 255.0,
+        )
         lr_array = data["INTERPOLATED"][0, 0].squeeze().numpy()
-        cv2.imwrite(f"/mnt/petrelfs/wangjiong/ai4earth/Diffusion_4_downscaling/debug/{i}_lr.png", (lr_array - np.min(lr_array)) / (np.max(lr_array) - np.min(lr_array)) * 255.0)
+        cv2.imwrite(
+            f"/mnt/petrelfs/wangjiong/ai4earth/Diffusion_4_downscaling/debug/{i}_lr.png",
+            (lr_array - np.min(lr_array))
+            / (np.max(lr_array) - np.min(lr_array))
+            * 255.0,
+        )
         land_array = data["LAND"].squeeze().numpy()
-        cv2.imwrite(f"/mnt/petrelfs/wangjiong/ai4earth/Diffusion_4_downscaling/debug/{i}_land.png", (land_array - np.min(land_array)) / (np.max(land_array) - np.min(land_array)) * 255.0)
+        cv2.imwrite(
+            f"/mnt/petrelfs/wangjiong/ai4earth/Diffusion_4_downscaling/debug/{i}_land.png",
+            (land_array - np.min(land_array))
+            / (np.max(land_array) - np.min(land_array))
+            * 255.0,
+        )
         mask_array = data["mask"].squeeze().numpy()
-        cv2.imwrite(f"/mnt/petrelfs/wangjiong/ai4earth/Diffusion_4_downscaling/debug/{i}_mask.png", (mask_array - np.min(mask_array)) / (np.max(mask_array) - np.min(mask_array)) * 255.0)
+        cv2.imwrite(
+            f"/mnt/petrelfs/wangjiong/ai4earth/Diffusion_4_downscaling/debug/{i}_mask.png",
+            (mask_array - np.min(mask_array))
+            / (np.max(mask_array) - np.min(mask_array))
+            * 255.0,
+        )

@@ -9,6 +9,7 @@ import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
+from accelerate import Accelerator
 from tensorboardX import SummaryWriter
 from torch.nn.functional import l1_loss, mse_loss
 from torch.utils.data import DataLoader
@@ -16,7 +17,6 @@ from tqdm import tqdm
 
 import model
 from configs import Config
-from accelerate import Accelerator
 
 # from x2_data.mydataset_patch import BigDataset_train
 # from data.mydataset_patch import SR3_Dataset_patch
@@ -45,7 +45,7 @@ if __name__ == "__main__":
     accelerator = Accelerator()
     device = accelerator.device
     print("Device:", device)
-    
+
     parser = argparse.ArgumentParser()
     parser.add_argument("-c", "--config", type=str, help="JSON file for configuration")
     parser.add_argument(
@@ -65,10 +65,10 @@ if __name__ == "__main__":
         "--era5_root", type=str, default=None, help="mount point of era5 data"
     )
     args = parser.parse_args()
-    
+
     if args.gpu_ids is None:
         args.gpu_ids = os.environ["CUDA_VISIBLE_DEVICES"]
-        
+
     variable_name = args.variable_name
     configs = Config(args)
     torch.backends.cudnn.enabled = True
@@ -97,7 +97,7 @@ if __name__ == "__main__":
         patch_size=configs.height,
         year_start=configs.start_date,
         year_end=configs.end_date,
-        year_freq=configs.sample_interval
+        year_freq=configs.sample_interval,
     )
     val_data = SR3_CNDataset_patch(
         args.era5_root,
@@ -109,7 +109,7 @@ if __name__ == "__main__":
         patch_size=configs.height,
         year_start="2021-07-01",
         year_end="2021-08-31-23",
-        year_freq=configs.sample_interval
+        year_freq=configs.sample_interval,
     )
 
     logger.info(f"Train size: {len(train_data)}, Val size: {len(val_data)}.")
@@ -129,8 +129,10 @@ if __name__ == "__main__":
     )
     train_loader = accelerator.prepare_data_loader(train_loader)
     val_loader = accelerator.prepare_data_loader(val_loader)
-    logger.info(f"Training [{len(train_loader)} batches] and Validation [{len(val_loader)} batches] dataloaders are ready. ")
-    
+    logger.info(
+        f"Training [{len(train_loader)} batches] and Validation [{len(val_loader)} batches] dataloaders are ready. "
+    )
+
     # Defining the model.
     optimizer = get_optimizer(configs.optimizer_type)
     diffusion = model.create_model(
@@ -164,7 +166,7 @@ if __name__ == "__main__":
         resume_state=configs.resume_state,
         phase=configs.phase,
         height=configs.height,
-        accelerator=accelerator
+        accelerator=accelerator,
     )
     logger.info("Model initialization is finished.")
 
@@ -191,7 +193,7 @@ if __name__ == "__main__":
     val_metrics_dict["RMSE_inter_" + variable_name] = 0.0
     val_metrics = OrderedDict(val_metrics_dict)
 
-    diffusion, 
+    diffusion,
     # Training.
     logger.info("Starting the training.")
     while current_step < configs.n_iter:
@@ -199,7 +201,7 @@ if __name__ == "__main__":
 
         for train_data in train_loader:
             current_step += 1
-            
+
             if current_step > configs.n_iter:
                 break
 
@@ -225,7 +227,7 @@ if __name__ == "__main__":
                 #     tb_logger.add_histogram(name, param.clone().cpu().data.numpy(), current_step)
 
                 accumulated_statistics = OrderedDict()
-                
+
             # Validation.
             if current_step % configs.val_freq == 0:
                 logger.info("Starting validation.")
@@ -354,7 +356,10 @@ if __name__ == "__main__":
                                 np.abs(bias)[num, 0], vmin=0, vmax=2, cmap="Reds"
                             )
                             axs[idx_i, 8].imshow(
-                                val_data["mask"][num, 0].cpu().numpy(), vmin=0, vmax=2, cmap="RdBu_r"
+                                val_data["mask"][num, 0].cpu().numpy(),
+                                vmin=0,
+                                vmax=2,
+                                cmap="RdBu_r",
                             )
                             axs[idx_i, 8].set_title(
                                 "mean_mae:%.3f,inter_mae:%.3f,sr_mae:%.3f"
