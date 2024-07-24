@@ -53,7 +53,9 @@ class DDPM(BaseModel):
         checkpoint: Path to the checkpoint file.
         resume_state: The path to load the network.
         phase: Either train or val.
-        height: U-Net input tensor height value.
+        height: U-Net input tensor height value. [Size of inference patch]
+        img_height: height of the whole image
+        img_width: width of the whole image
     """
 
     def __init__(
@@ -87,6 +89,8 @@ class DDPM(BaseModel):
         resume_state,
         phase,
         height,
+        img_height,
+        img_width,
         accelerator=None
     ):
 
@@ -115,6 +119,8 @@ class DDPM(BaseModel):
         self.resume_state = resume_state
         self.finetune_norm = finetune_norm
         self.phase = phase
+        self.img_height = img_height
+        self.img_width = img_width
         self.accelerator = accelerator
 
         if self.phase == "train":
@@ -158,7 +164,9 @@ class DDPM(BaseModel):
             )
             
             # self.scheduler = MultiStepLR(self.optimizer, milestones=[20000], gamma=0.5)
-
+            if self.accelerator is not None:
+                self.optimizer, self.scheduler = self.accelerator.prepare(self.optimizer, self.scheduler)
+                
             self.ema = EMA(mu=0.9999)
             self.ema.register(self.SR_net)
 
@@ -166,22 +174,20 @@ class DDPM(BaseModel):
 
         self.load_network()
         if self.accelerator is not None:
-                self.SR_net, self.optimizer, self.scheduler = self.accelerator.prepare(
-                    self.SR_net, self.optimizer, self.scheduler
-                )
+                self.SR_net = self.accelerator.prepare(self.SR_net)
                 
         self.print_network()
         self.index_list = []
-        for i, i_start in enumerate(np.arange(0, 400, height)):
-            for j, j_start in enumerate(np.arange(0, 700, height)):
+        for i, i_start in enumerate(np.arange(0, self.img_height, height)):
+            for j, j_start in enumerate(np.arange(0, self.img_width, height)):
                 i_end = i_start + height
                 j_end = j_start + height
-                if i_end > 400:
-                    i_end = 400
-                    i_start = 400 - height
-                if j_end > 700:
-                    j_end = 700
-                    j_start = 700 - height
+                if i_end > self.img_height:
+                    i_end = self.img_height
+                    i_start = self.img_height - height
+                if j_end > self.img_width:
+                    j_end = self.img_width
+                    j_start = self.img_width - height
                 self.index_list.append((i_start, i_end, j_start, j_end))
 
     def feed_data(self, data: tuple) -> None:
@@ -201,8 +207,10 @@ class DDPM(BaseModel):
         self.optimizer.zero_grad()
         loss = self.SR_net(self.data)
         loss = loss.mean()              # .sum() / self.data["HR"].numel()
-        # loss.backward()
-        self.accelerator.backward(loss)
+        if self.accelerator:
+            self.accelerator.backward(loss)
+        else:
+            loss.backward()
         self.optimizer.step()
         # self.ema.update(self.SR_net)  # Exponential Moving Average step of parameters.
         self.log_dict[self.loss_type] = loss.item()  # Setting the log.
@@ -236,8 +244,8 @@ class DDPM(BaseModel):
 
     def batch2patch(self, data, batch):
 
-        reconstructed_data = torch.zeros(size=(batch, 1, 400, 700)).to(data.device)
-        data_rec_mask = torch.zeros(size=(batch, 1, 400, 700)).to(data.device)
+        reconstructed_data = torch.zeros(size=(batch, 1, self.img_height, self.img_width)).to(data.device)
+        data_rec_mask = torch.zeros(size=(batch, 1, self.img_height, self.img_width)).to(data.device)
         for i in range(batch):
 
             temp_data = data[
@@ -254,8 +262,8 @@ class DDPM(BaseModel):
         return reconstructed_data
 
     def batch2patch_v2(self, data, batch):
-        reconstructed_data = torch.zeros(size=(batch, 1, 400, 700)).to(data.device)
-        data_rec_mask = torch.zeros(size=(batch, 1, 400, 700)).to(data.device)
+        reconstructed_data = torch.zeros(size=(batch, 1, self.img_height, self.img_width)).to(data.device)
+        data_rec_mask = torch.zeros(size=(batch, 1, self.img_height, self.img_width)).to(data.device)
         for i in range(batch):
 
             temp_data = data[

@@ -319,9 +319,9 @@ class DDIMSampler(object):
             # e_t = self.model.apply_model(x, t, c)
             # img = torch.randn(x.shape, device=device)
             if mycondition:
-                e_t = self.model.model(torch.cat([c, x], dim=1), t)
+                e_t = self.model.model(torch.cat([c.to(device), x.to(device)], dim=1), t)
             else:
-                e_t = self.model.model(x, t)
+                e_t = self.model.model(x.to(device), t)
             # print(e_t.shape)
         else:
             x_in = torch.cat([x] * 2)

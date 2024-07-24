@@ -92,12 +92,15 @@ class Config:
         experiments_root: The path to experiment.
         tranform_monthly: Whether to apply transformation monthly or on the whole dataset.
         height: U-Net input tensor height value.
+        img_height: height of the whole image
+        img_width: width of the whole image
     """
 
     def __init__(self, args: argparse.Namespace):
         self.args = args
         self.root = self.args.config
         self.gpu_ids = self.args.gpu_ids
+        self.area = self.args.area
         # self.members=self.args.members
         self.params = {}
         self.experiments_root = None
@@ -116,6 +119,8 @@ class Config:
         self.num_workers = self.params["data"]["num_workers"]
         self.use_shuffle = self.params["data"]["use_shuffle"]
         self.height = self.params["data"]["height"]
+        self.img_height = self.params["data"]["img_height"]
+        self.img_width = self.params["data"]["img_width"]
         self.start_date = self.params["data"]["start_date"]
         self.end_date = self.params["data"]["end_date"]
         self.sample_interval = self.params["data"]["sample_interval"]
@@ -181,7 +186,7 @@ class Config:
 
         if not self.params["path"]["resume_state"]:
             self.experiments_root = os.path.join(
-                "experiments", f"{self.params['name']}_{get_current_datetime()}"
+                "experiments", f"{self.params['name']}_{self.area}_{get_current_datetime()}"
             )
         else:
             self.experiments_root = "/".join(

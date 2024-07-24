@@ -40,6 +40,8 @@ def create_model(
     resume_state,
     phase,
     height,
+    img_height,
+    img_width,
     accelerator=None
 ):
     """Creates DDPM model.
@@ -106,6 +108,8 @@ def create_model(
         resume_state=resume_state,
         phase=phase,
         height=height,
+        img_height=img_height,
+        img_width=img_width,
         accelerator=accelerator
     )
     logger.info("Model [{:s}] is created.".format(diffusion_model.__class__.__name__))

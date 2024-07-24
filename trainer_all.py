@@ -58,6 +58,7 @@ if __name__ == "__main__":
     )
     parser.add_argument("-gpu", "--gpu_ids", type=str, default=None)
     parser.add_argument("-var", "--variable_name", type=str, default=None)
+    parser.add_argument("--area", type=str, choices=("china", "gansu"), default="china", help="area to select data")
     parser.add_argument(
         "--cma_root", type=str, default=None, help="mount point of cma data"
     )
@@ -83,7 +84,7 @@ if __name__ == "__main__":
     tb_logger = SummaryWriter(log_dir=configs.tb_logger)
 
     land_01_path = "/mnt/petrelfs/wangjiong/ai4earth/ClimateHR/assets/earth_data/ETOPO_2022_v1_1km_N60_0E70_140_surface.npy"
-    mask_path = "/mnt/petrelfs/wangjiong/ai4earth/ClimateHR/assets/earth_data/land_sea_mask_1km_binary.npy"
+    mask_path = "/mnt/petrelfs/wangjiong/ai4earth/ClimateHR/assets/earth_data/land_mask_1km_binary.npy"
 
     train_data = SR3_CNDataset_patch(
         # np.array(target_paths)[train_index],
@@ -94,6 +95,7 @@ if __name__ == "__main__":
         scale=configs.data_scale,
         # lr_paths=np.array(lr_paths)[train_index],
         var=variable_name,
+        area=args.area,
         patch_size=configs.height,
         year_start=configs.start_date,
         year_end=configs.end_date,
@@ -106,13 +108,14 @@ if __name__ == "__main__":
         mask_path,
         scale=configs.data_scale,
         var=variable_name,
+        area=args.area,
         patch_size=configs.height,
         year_start="2021-07-01",
-        year_end="2021-08-31-23",
+        year_end="2021-08-26-23",
         year_freq=configs.sample_interval,
     )
 
-    logger.info(f"Train size: {len(train_data)}, Val size: {len(val_data)}.")
+    logger.info(f"Train Samples: {len(train_data)}, Val Samples: {len(val_data)}.")
     train_loader = DataLoader(
         train_data,
         batch_size=configs.batch_size,
@@ -167,6 +170,8 @@ if __name__ == "__main__":
         phase=configs.phase,
         height=configs.height,
         accelerator=accelerator,
+        img_height=configs.img_height if args.area == "china" else configs.height,        # whole image equals to patch size if not whole CN area
+        img_width=configs.img_width if args.area == "china" else configs.height,
     )
     logger.info("Model initialization is finished.")
 
@@ -193,7 +198,6 @@ if __name__ == "__main__":
     val_metrics_dict["RMSE_inter_" + variable_name] = 0.0
     val_metrics = OrderedDict(val_metrics_dict)
 
-    diffusion,
     # Training.
     logger.info("Starting the training.")
     while current_step < configs.n_iter:
@@ -220,7 +224,7 @@ if __name__ == "__main__":
                     tb_logger.add_scalar(f"{metric}/train", mean_value, current_step)
 
                 logger.info(message)
-                # tb_logger.add_scalar(f"learning_rate", diffusion.get_lr(), current_step)
+                tb_logger.add_scalar(f"learning_rate", diffusion.get_lr(), current_step)
 
                 # Visualizing distributions of parameters.
                 # for name, param in diffusion.get_named_parameters():
@@ -230,7 +234,7 @@ if __name__ == "__main__":
 
             # Validation.
             if current_step % configs.val_freq == 0:
-                logger.info("Starting validation.")
+                logger.info(f"Starting validation at Step {current_step}.")
                 idx = 0
                 result_path = f"{configs.results}/{current_epoch}"
                 os.makedirs(result_path, exist_ok=True)
@@ -241,6 +245,8 @@ if __name__ == "__main__":
                     linear_end=configs.val_linear_end,
                 )
 
+                # make sure visualize at least once
+                val_vis_freq = min(configs.val_vis_freq, int(len(val_loader) - 1))
                 # A dictionary for storing a list of mean temperatures for each month.
                 # month2mean_temperature = defaultdict(list)
 
@@ -282,7 +288,7 @@ if __name__ == "__main__":
                         visuals["HR"] * mask, visuals["INTERPOLATED"] * mask
                     )
 
-                    if idx % configs.val_vis_freq == 0:
+                    if idx % val_vis_freq == 0:
 
                         logger.info(
                             f"[{idx//configs.val_vis_freq}] Visualizing and storing some examples."
@@ -299,16 +305,16 @@ if __name__ == "__main__":
                         # # Choosing the first n_val_vis number of samples to visualize.
                         # variable_id=0
                         random_idx = np.random.randint(
-                            0, int(configs.batch_size / 16), 5
+                            0, int(configs.batch_size // 16), configs.n_val_vis
                         )
 
                         path = f"{result_path}/{current_epoch}_{current_step}_{idx}"
-                        figure, axs = plt.subplots(5, 9, figsize=(25, 12))
+                        figure, axs = plt.subplots(len(random_idx), 9, figsize=(25, 12))
                         if variable_name == "tp":
                             vmin = 0
                             cmap = "BrBG"
                             vmax = 2
-                        elif variable_name in ["u", "v", "t2m", "sp"]:
+                        elif variable_name in ["u10", "v10", "t2m", "sp"]:
                             vmin = 0
                             cmap = "RdBu_r"
                             vmax = 1
@@ -316,8 +322,10 @@ if __name__ == "__main__":
                             vmin = -2
                             cmap = "RdBu_r"
                             vmax = 2
+                            
                         for idx_i, num in enumerate(random_idx):
-                            num = min(num, visuals["HR"].shape[0])
+                            num = min(num, visuals["HR"].shape[0] - 1)
+                            
                             axs[idx_i, 0].imshow(
                                 visuals["HR"][num, 0], vmin=vmin, vmax=vmax, cmap=cmap
                             )
@@ -330,7 +338,6 @@ if __name__ == "__main__":
                                 vmax=vmax,
                                 cmap=cmap,
                             )
-
                             axs[idx_i, 3].imshow(
                                 mean_candidate[num, 0], vmin=vmin, vmax=vmax, cmap=cmap
                             )
@@ -343,7 +350,7 @@ if __name__ == "__main__":
                                 vmax=2,
                                 cmap="Reds",
                             )
-                            axs[idx_i, 7].imshow(
+                            axs[idx_i, 6].imshow(
                                 np.abs(
                                     visuals["HR"][num, 0]
                                     - visuals["INTERPOLATED"][num, 0]
@@ -352,7 +359,7 @@ if __name__ == "__main__":
                                 vmax=2,
                                 cmap="Reds",
                             )
-                            axs[idx_i, 6].imshow(
+                            axs[idx_i, 7].imshow(
                                 np.abs(bias)[num, 0], vmin=0, vmax=2, cmap="Reds"
                             )
                             axs[idx_i, 8].imshow(
@@ -374,6 +381,7 @@ if __name__ == "__main__":
                                     ).mean(),
                                 )
                             )
+                            axs[idx_i, 0].set_ylabel(f"Sample_{num}")
                         for title, col in zip(
                             [
                                 "HR",
@@ -382,8 +390,8 @@ if __name__ == "__main__":
                                 "mean",
                                 "std",
                                 "mae_sr",
-                                "mae_mean",
                                 "mae_inter",
+                                "mae_mean",
                             ],
                             range(8),
                         ):
